@@ -35,11 +35,14 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
+      # 🔐 REQUIRED for linuxserver images (GHCR)
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Create docker-compose.yml
         run: |
           cat <<EOF > docker-compose.yml
-          version: "3.9"
-
           services:
             guacamole:
               image: lscr.io/linuxserver/guacamole:latest
@@ -72,6 +75,8 @@ jobs:
           echo "🔐 Default Login:"
           echo "Username: guacadmin"
           echo "Password: guacadmin"
+          echo ""
+          echo "⚠️ Change password immediately"
           echo "======================================"
 
       - name: Keep runner alive
