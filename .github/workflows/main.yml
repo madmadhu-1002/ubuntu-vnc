@@ -1,4 +1,4 @@
-name: Webtop Desktop in Browser with Tailscale
+name: Webtop with Real SSL (Tailscale)
 
 on:
   workflow_dispatch:
@@ -9,9 +9,6 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Install Docker
-        uses: docker/setup-buildx-action@v2
-
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
@@ -21,39 +18,45 @@ jobs:
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
             --hostname=github-webtop \
-            --accept-dns=false
+            --accept-dns=true
 
-      - name: Pull Webtop image
+      - name: Get TLS cert from Tailscale
+        run: |
+          sudo mkdir -p /etc/tailscale/certs
+          sudo tailscale cert github-webtop
+          sudo mv github-webtop.* /etc/tailscale/certs/
+
+      - name: Pull Webtop
         run: |
           docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Run Webtop
+      - name: Run Webtop with SSL
         run: |
           docker run -d \
             --name webtop \
-            --security-opt seccomp=unconfined \
             --network host \
+            --security-opt seccomp=unconfined \
             -e PUID=0 \
             -e PGID=0 \
             -e TZ=Asia/Kolkata \
             -e USERNAME=webtop \
             -e PASSWORD=github \
-            -e WEBTOP_DISABLE_HTTPS=true \
+            -e SSL_CERT=/certs/github-webtop.crt \
+            -e SSL_KEY=/certs/github-webtop.key \
+            -v /etc/tailscale/certs:/certs:ro \
             lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Print connection info
+      - name: Show secure URL
         run: |
-          IP=$(tailscale ip -4)
-          echo "=========================================="
-          echo "Webtop Desktop is running!"
+          echo "======================================"
+          echo "✅ Webtop with REAL HTTPS"
           echo ""
-          echo "Open in your browser:"
-          echo "  http://$IP:3000"
+          echo "Open:"
+          echo "https://github-webtop.$(tailscale status --json | jq -r '.CurrentTailnet.Name'):3000"
           echo ""
-          echo "Login credentials:"
-          echo "  Username: webtop"
-          echo "  Password: github"
-          echo "=========================================="
+          echo "Username: webtop"
+          echo "Password: github"
+          echo "======================================"
 
-      - name: Keep runner alive
+      - name: Keep alive
         run: sleep 6h
