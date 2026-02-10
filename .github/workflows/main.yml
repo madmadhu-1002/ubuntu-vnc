@@ -1,9 +1,5 @@
 name: Guacamole with HTTPS via Tailscale Serve
 
-permissions:
-  contents: read
-  packages: read
-
 on:
   workflow_dispatch:
 
@@ -39,24 +35,17 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
-      # REQUIRED for linuxserver images (GHCR)
-      - name: Login to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
       - name: Create docker-compose.yml
         run: |
           cat <<EOF > docker-compose.yml
           services:
             guacamole:
-              image: lscr.io/linuxserver/guacamole:latest
+              image: oznu/guacamole:latest
               container_name: guacamole
-              environment:
-                PUID: 0
-                PGID: 0
-                TZ: Asia/Kolkata
               ports:
                 - "8080:8080"
+              environment:
+                EXTENSIONS: auth
               restart: unless-stopped
           EOF
 
@@ -79,8 +68,6 @@ jobs:
           echo "🔐 Login:"
           echo "Username: guacadmin"
           echo "Password: guacadmin"
-          echo ""
-          echo "⚠️ Change password immediately"
           echo "======================================"
 
       - name: Keep runner alive
