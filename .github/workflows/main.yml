@@ -1,4 +1,4 @@
-name: Webtop with HTTPS (Tailscale cert)
+name: Webtop with HTTPS via Tailscale Serve
 
 on:
   workflow_dispatch:
@@ -19,7 +19,6 @@ jobs:
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
             --accept-dns=true
 
-      # 🔧 FIX: strip trailing dot from DNS name
       - name: Detect Tailscale hostname
         id: ts
         run: |
@@ -27,17 +26,11 @@ jobs:
           echo "host=$HOST" >> $GITHUB_OUTPUT
           echo "Detected hostname: $HOST"
 
-      - name: Request TLS cert
-        run: |
-          sudo mkdir -p /etc/tailscale/certs
-          sudo tailscale cert ${{ steps.ts.outputs.host }}
-          sudo mv ${{ steps.ts.outputs.host }}.* /etc/tailscale/certs/
-
       - name: Pull Webtop
         run: |
           docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Run Webtop with HTTPS
+      - name: Run Webtop (HTTP only)
         run: |
           docker run -d \
             --name webtop \
@@ -48,18 +41,19 @@ jobs:
             -e TZ=Asia/Kolkata \
             -e USERNAME=webtop \
             -e PASSWORD=github \
-            -e SSL_CERT=/certs/${{ steps.ts.outputs.host }}.crt \
-            -e SSL_KEY=/certs/${{ steps.ts.outputs.host }}.key \
-            -v /etc/tailscale/certs:/certs:ro \
             lscr.io/linuxserver/webtop:ubuntu-xfce
+
+      - name: Enable HTTPS with Tailscale Serve
+        run: |
+          sudo tailscale serve https / http://localhost:3000
 
       - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Webtop Desktop is running with HTTPS"
+          echo "✅ Webtop Desktop is running with REAL HTTPS"
           echo ""
           echo "Open in browser:"
-          echo "https://${{ steps.ts.outputs.host }}:3000"
+          echo "https://${{ steps.ts.outputs.host }}"
           echo ""
           echo "Username: webtop"
           echo "Password: github"
