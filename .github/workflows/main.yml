@@ -9,12 +9,15 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Install Docker
+      - name: Verify Docker
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Install jq
         run: |
           sudo apt update
-          sudo apt install -y docker.io docker-compose jq
-          sudo systemctl start docker
-          sudo systemctl enable docker
+          sudo apt install -y jq
 
       - name: Install Tailscale
         run: |
@@ -31,7 +34,6 @@ jobs:
         run: |
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
-          echo "Detected hostname: $HOST"
 
       - name: Create docker-compose.yml
         run: |
@@ -66,16 +68,12 @@ jobs:
       - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Apache Guacamole is running with REAL HTTPS"
+          echo "✅ Apache Guacamole is running with HTTPS"
           echo ""
-          echo "🌐 Open in browser:"
-          echo "https://${{ steps.ts.outputs.host }}"
+          echo "🌐 https://${{ steps.ts.outputs.host }}"
           echo ""
-          echo "🔐 Login:"
-          echo "Username: guacadmin"
-          echo "Password: guacadmin"
-          echo ""
-          echo "⚠️ Change password immediately!"
+          echo "Login:"
+          echo "guacadmin / guacadmin"
           echo "======================================"
 
       - name: Keep runner alive
