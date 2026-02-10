@@ -17,14 +17,14 @@ jobs:
         run: |
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
-            --hostname=github-webtop \
+            --hostname=github-webtop-2 \
             --accept-dns=true
 
       - name: Request Tailscale TLS cert
         run: |
           sudo mkdir -p /etc/tailscale/certs
-          sudo tailscale cert github-webtop.tail42478b.ts.net
-          sudo mv github-webtop.tail42478b.ts.net.* /etc/tailscale/certs/
+          sudo tailscale cert github-webtop-2.tail42478b.ts.net
+          sudo mv github-webtop-2.tail42478b.ts.net.* /etc/tailscale/certs/
 
       - name: Pull Webtop image
         run: |
@@ -41,8 +41,8 @@ jobs:
             -e TZ=Asia/Kolkata \
             -e USERNAME=webtop \
             -e PASSWORD=github \
-            -e SSL_CERT=/certs/github-webtop.tail42478b.ts.net.crt \
-            -e SSL_KEY=/certs/github-webtop.tail42478b.ts.net.key \
+            -e SSL_CERT=/certs/github-webtop-2.tail42478b.ts.net.crt \
+            -e SSL_KEY=/certs/github-webtop-2.tail42478b.ts.net.key \
             -v /etc/tailscale/certs:/certs:ro \
             lscr.io/linuxserver/webtop:ubuntu-xfce
 
@@ -52,7 +52,7 @@ jobs:
           echo "✅ Webtop is running with REAL HTTPS"
           echo ""
           echo "Open this URL (IMPORTANT):"
-          echo "https://github-webtop.tail42478b.ts.net:3000"
+          echo "https://github-webtop-2.tail42478b.ts.net:3000"
           echo ""
           echo "Username: webtop"
           echo "Password: github"
