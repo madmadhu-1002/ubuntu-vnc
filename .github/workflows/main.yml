@@ -45,7 +45,7 @@ jobs:
 
       - name: Enable HTTPS with Tailscale Serve
         run: |
-          sudo tailscale serve https / http://localhost:3000
+          sudo tailscale serve -bg http://localhost:3000
 
       - name: Show HTTPS URL
         run: |
