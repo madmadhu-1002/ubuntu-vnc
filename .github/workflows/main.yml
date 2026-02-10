@@ -1,14 +1,43 @@
-name: Ubuntu GUI (Modern) with Tailscale
+name: Ubuntu VNC (Classic) with Tailscale
 
 on:
   workflow_dispatch:
 
 jobs:
-  webtop:
+  vnc:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
+      - name: Install system packages
+        run: |
+          sudo apt update
+          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server dbus-x11
+
+      - name: Create VNC user
+        run: |
+          sudo useradd -m dev
+          echo "dev:github" | sudo chpasswd
+
+      - name: Setup VNC password
+        run: |
+          sudo -u dev mkdir -p /home/dev/.vnc
+          echo "github" | sudo -u dev vncpasswd -f > /home/dev/.vnc/passwd
+          sudo chmod 600 /home/dev/.vnc/passwd
+
+      - name: Configure VNC startup
+        run: |
+          echo '#!/bin/sh
+          unset SESSION_MANAGER
+          unset DBUS_SESSION_BUS_ADDRESS
+          exec startxfce4 &' | sudo tee /home/dev/.vnc/xstartup
+          sudo chmod +x /home/dev/.vnc/xstartup
+          sudo chown -R dev:dev /home/dev/.vnc
+
+      - name: Start VNC server
+        run: |
+          sudo -u dev vncserver -localhost no :1
+
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
@@ -17,41 +46,17 @@ jobs:
         run: |
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
-            --hostname=github-gui \
-            --accept-dns=false
+            --hostname=github-vnc
 
-      - name: Pull modern Ubuntu GUI image
+      - name: Show connection info
         run: |
-          docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
-
-      - name: Run GUI container
-        run: |
-          docker run -d \
-            --name webtop \
-            --security-opt seccomp=unconfined \
-            --network host \
-            -e PUID=0 \
-            -e PGID=0 \
-            -e TZ=Asia/Kolkata \
-            -e PASSWORD=github \
-            -e DISABLE_HTTPS=true \
-            lscr.io/linuxserver/webtop:ubuntu-xfce
-
-      - name: Show login info
-        run: |
-          echo "======================================"
-          echo "✅ MODERN UBUNTU DESKTOP READY"
+          echo "===================================="
+          echo "✅ VNC READY (CLASSIC)"
           echo ""
-          echo "🌐 ACCESS VIA BROWSER (BEST)"
-          tailscale ip -4 | sed 's|^|https://|'
-          echo ""
-          echo "🔐 LOGIN PASSWORD"
+          echo "Address : $(tailscale ip -4):5901"
+          echo "Username: dev"
           echo "Password: github"
-          echo ""
-          echo "📡 Ports:"
-          echo "  - Web GUI: 3000"
-          echo "  - VNC: 5901"
-          echo "======================================"
+          echo "===================================="
 
       - name: Keep runner alive
         run: sleep 6h
