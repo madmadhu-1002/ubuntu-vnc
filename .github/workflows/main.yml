@@ -1,14 +1,21 @@
-name: Webtop with HTTPS via Tailscale Serve
+name: Guacamole with HTTPS via Tailscale Serve
 
 on:
   workflow_dispatch:
 
 jobs:
-  webtop:
+  guacamole:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
+      - name: Install Docker
+        run: |
+          sudo apt update
+          sudo apt install -y docker.io docker-compose jq
+          sudo systemctl start docker
+          sudo systemctl enable docker
+
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
@@ -26,37 +33,49 @@ jobs:
           echo "host=$HOST" >> $GITHUB_OUTPUT
           echo "Detected hostname: $HOST"
 
-      - name: Pull Webtop
+      - name: Create docker-compose.yml
         run: |
-          docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
+          cat <<EOF > docker-compose.yml
+          version: "3.9"
 
-      - name: Run Webtop (HTTP only)
+          services:
+            guacd:
+              image: guacamole/guacd:latest
+              restart: unless-stopped
+
+            guacamole:
+              image: guacamole/guacamole:latest
+              depends_on:
+                - guacd
+              environment:
+                GUACD_HOSTNAME: guacd
+                GUACD_PORT: 4822
+              ports:
+                - "8080:8080"
+              restart: unless-stopped
+          EOF
+
+      - name: Start Guacamole
         run: |
-          docker run -d \
-            --name webtop \
-            --network host \
-            --security-opt seccomp=unconfined \
-            -e PUID=0 \
-            -e PGID=0 \
-            -e TZ=Asia/Kolkata \
-            -e USERNAME=webtop \
-            -e PASSWORD=github \
-            lscr.io/linuxserver/webtop:ubuntu-xfce
+          docker compose up -d
 
       - name: Enable HTTPS with Tailscale Serve
         run: |
-          sudo tailscale serve -bg http://localhost:3000
+          sudo tailscale serve -bg http://localhost:8080/guacamole
 
       - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Webtop Desktop is running with REAL HTTPS"
+          echo "✅ Apache Guacamole is running with REAL HTTPS"
           echo ""
-          echo "Open in browser:"
+          echo "🌐 Open in browser:"
           echo "https://${{ steps.ts.outputs.host }}"
           echo ""
-          echo "Username: webtop"
-          echo "Password: github"
+          echo "🔐 Login:"
+          echo "Username: guacadmin"
+          echo "Password: guacadmin"
+          echo ""
+          echo "⚠️ Change password immediately!"
           echo "======================================"
 
       - name: Keep runner alive
