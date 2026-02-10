@@ -1,5 +1,9 @@
 name: Guacamole with HTTPS via Tailscale Serve
 
+permissions:
+  contents: read
+  packages: read
+
 on:
   workflow_dispatch:
 
@@ -35,7 +39,7 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
-      # 🔐 REQUIRED for linuxserver images (GHCR)
+      # 🔑 REQUIRED FOR GHCR (THIS WAS MISSING BEFORE)
       - name: Login to GitHub Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -75,8 +79,6 @@ jobs:
           echo "🔐 Default Login:"
           echo "Username: guacadmin"
           echo "Password: guacadmin"
-          echo ""
-          echo "⚠️ Change password immediately"
           echo "======================================"
 
       - name: Keep runner alive
