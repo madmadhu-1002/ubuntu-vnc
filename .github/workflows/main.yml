@@ -1,42 +1,16 @@
-name: Ubuntu VNC (Classic) with Tailscale
+name: Webtop Desktop in Browser with Tailscale
 
 on:
   workflow_dispatch:
 
 jobs:
-  vnc:
+  webtop:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
-      - name: Install system packages
-        run: |
-          sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server dbus-x11
-
-      - name: Create VNC user
-        run: |
-          sudo useradd -m dev
-          echo "dev:github" | sudo chpasswd
-
-      - name: Setup VNC password
-        run: |
-          sudo -u dev mkdir -p /home/dev/.vnc
-          echo "github" | sudo -u dev vncpasswd -f > /home/dev/.vnc/passwd
-          sudo chmod 600 /home/dev/.vnc/passwd
-
-      - name: Configure VNC startup
-        run: |
-          echo '#!/bin/sh
-          unset SESSION_MANAGER
-          unset DBUS_SESSION_BUS_ADDRESS
-          exec startxfce4 &' | sudo tee /home/dev/.vnc/xstartup
-          sudo chmod +x /home/dev/.vnc/xstartup
-          sudo chown -R dev:dev /home/dev/.vnc
-
-      - name: Start VNC server
-        run: |
-          sudo -u dev vncserver -localhost no :1
+      - name: Install Docker
+        uses: docker/setup-buildx-action@v2
 
       - name: Install Tailscale
         run: |
@@ -46,17 +20,40 @@ jobs:
         run: |
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
-            --hostname=github-vnc
+            --hostname=github-webtop \
+            --accept-dns=false
 
-      - name: Show connection info
+      - name: Pull Webtop image
         run: |
-          echo "===================================="
-          echo "✅ VNC READY (CLASSIC)"
+          docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
+
+      - name: Run Webtop
+        run: |
+          docker run -d \
+            --name webtop \
+            --security-opt seccomp=unconfined \
+            --network host \
+            -e PUID=0 \
+            -e PGID=0 \
+            -e TZ=Asia/Kolkata \
+            -e USERNAME=webtop \
+            -e PASSWORD=github \
+            -e WEBTOP_DISABLE_HTTPS=true \
+            lscr.io/linuxserver/webtop:ubuntu-xfce
+
+      - name: Print connection info
+        run: |
+          IP=$(tailscale ip -4)
+          echo "=========================================="
+          echo "Webtop Desktop is running!"
           echo ""
-          echo "Address : $(tailscale ip -4):5901"
-          echo "Username: dev"
-          echo "Password: github"
-          echo "===================================="
+          echo "Open in your browser:"
+          echo "  http://$IP:3000"
+          echo ""
+          echo "Login credentials:"
+          echo "  Username: webtop"
+          echo "  Password: github"
+          echo "=========================================="
 
       - name: Keep runner alive
         run: sleep 6h
