@@ -1,4 +1,4 @@
-name: Webtop with Real SSL (Tailscale)
+name: Webtop with HTTPS (Tailscale cert)
 
 on:
   workflow_dispatch:
@@ -17,20 +17,25 @@ jobs:
         run: |
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
-            --hostname=github-webtop-2 \
             --accept-dns=true
 
-      - name: Request Tailscale TLS cert
+      - name: Detect Tailscale hostname
+        id: ts
+        run: |
+          HOST=$(tailscale status --json | jq -r '.Self.DNSName')
+          echo "host=$HOST" >> $GITHUB_OUTPUT
+
+      - name: Request TLS cert
         run: |
           sudo mkdir -p /etc/tailscale/certs
-          sudo tailscale cert github-webtop-2.tail42478b.ts.net
-          sudo mv github-webtop-2.tail42478b.ts.net.* /etc/tailscale/certs/
+          sudo tailscale cert ${{ steps.ts.outputs.host }}
+          sudo mv ${{ steps.ts.outputs.host }}.* /etc/tailscale/certs/
 
-      - name: Pull Webtop image
+      - name: Pull Webtop
         run: |
           docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Run Webtop with SSL
+      - name: Run Webtop with HTTPS
         run: |
           docker run -d \
             --name webtop \
@@ -41,18 +46,18 @@ jobs:
             -e TZ=Asia/Kolkata \
             -e USERNAME=webtop \
             -e PASSWORD=github \
-            -e SSL_CERT=/certs/github-webtop-2.tail42478b.ts.net.crt \
-            -e SSL_KEY=/certs/github-webtop-2.tail42478b.ts.net.key \
+            -e SSL_CERT=/certs/${{ steps.ts.outputs.host }}.crt \
+            -e SSL_KEY=/certs/${{ steps.ts.outputs.host }}.key \
             -v /etc/tailscale/certs:/certs:ro \
             lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Show secure access info
+      - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Webtop is running with REAL HTTPS"
+          echo "✅ Webtop Desktop is running with HTTPS"
           echo ""
-          echo "Open this URL (IMPORTANT):"
-          echo "https://github-webtop-2.tail42478b.ts.net:3000"
+          echo "Open in browser:"
+          echo "https://${{ steps.ts.outputs.host }}:3000"
           echo ""
           echo "Username: webtop"
           echo "Password: github"
