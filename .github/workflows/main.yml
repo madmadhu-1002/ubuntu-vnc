@@ -1,17 +1,14 @@
-name: Ubuntu VNC with Tailscale
+name: Ubuntu GUI (Modern) with Tailscale
 
 on:
   workflow_dispatch:
 
 jobs:
-  vnc:
+  webtop:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
@@ -20,38 +17,40 @@ jobs:
         run: |
           sudo tailscale up \
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
-            --hostname=github-vnc \
+            --hostname=github-gui \
             --accept-dns=false
 
-      - name: Pull Ubuntu VNC Image
+      - name: Pull modern Ubuntu GUI image
         run: |
-          docker pull dorowu/ubuntu-desktop-lxde-vnc
+          docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Run VNC Container
+      - name: Run GUI container
         run: |
           docker run -d \
-            --name ubuntu-vnc \
+            --name webtop \
+            --security-opt seccomp=unconfined \
             --network host \
-            -e USER=root \
+            -e PUID=0 \
+            -e PGID=0 \
+            -e TZ=Asia/Kolkata \
             -e PASSWORD=github \
-            dorowu/ubuntu-desktop-lxde-vnc
+            lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Show Connection Details
+      - name: Show login info
         run: |
-          echo "===================================="
-          echo "✅ VNC SERVER IS READY"
+          echo "======================================"
+          echo "✅ MODERN UBUNTU DESKTOP READY"
           echo ""
-          echo "🔐 VNC LOGIN CREDENTIALS"
-          echo "Username: root"
+          echo "🌐 ACCESS VIA BROWSER (BEST)"
+          tailscale ip -4 | sed 's|^|https://|'
+          echo ""
+          echo "🔐 LOGIN PASSWORD"
           echo "Password: github"
           echo ""
-          echo "🌐 CONNECT VIA TAILSCALE IP"
-          tailscale ip -4
-          echo ""
-          echo "📡 VNC PORT: 5900"
-          echo "===================================="
+          echo "📡 Ports:"
+          echo "  - Web GUI: 3000"
+          echo "  - VNC: 5901"
+          echo "======================================"
 
-      - name: Keep Runner Alive
-        run: |
-          echo "Keeping runner alive..."
-          sleep 6h
+      - name: Keep runner alive
+        run: sleep 6h
