@@ -19,11 +19,13 @@ jobs:
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
             --accept-dns=true
 
+      # 🔧 FIX: strip trailing dot from DNS name
       - name: Detect Tailscale hostname
         id: ts
         run: |
-          HOST=$(tailscale status --json | jq -r '.Self.DNSName')
+          HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
+          echo "Detected hostname: $HOST"
 
       - name: Request TLS cert
         run: |
