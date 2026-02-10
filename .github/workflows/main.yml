@@ -35,6 +35,13 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
+      - name: Prepare Guacamole NO-AUTH config
+        run: |
+          mkdir -p config/extensions
+          docker run --rm guacamole/guacamole \
+            sh -c "cp /opt/guacamole/extensions/guacamole-auth-noauth*.jar /config/extensions/" \
+            -v $PWD/config:/config
+
       - name: Create docker-compose.yml
         run: |
           cat <<EOF > docker-compose.yml
@@ -52,6 +59,9 @@ jobs:
               environment:
                 GUACD_HOSTNAME: guacd
                 GUACD_PORT: 4822
+                GUACAMOLE_HOME: /config
+              volumes:
+                - ./config:/config
               ports:
                 - "8080:8080"
               restart: unless-stopped
@@ -68,12 +78,12 @@ jobs:
       - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Apache Guacamole is running with HTTPS"
+          echo "✅ Apache Guacamole is running with REAL HTTPS"
           echo ""
-          echo "🌐 https://${{ steps.ts.outputs.host }}"
+          echo "🌐 Open in browser:"
+          echo "https://${{ steps.ts.outputs.host }}"
           echo ""
-          echo "Login:"
-          echo "guacadmin / guacadmin"
+          echo "🔓 Authentication: DISABLED (NO-AUTH MODE)"
           echo "======================================"
 
       - name: Keep runner alive
