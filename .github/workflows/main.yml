@@ -39,7 +39,7 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
-      # 🔑 REQUIRED FOR GHCR (THIS WAS MISSING BEFORE)
+      # REQUIRED for linuxserver images (GHCR)
       - name: Login to GitHub Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -76,9 +76,11 @@ jobs:
           echo "🌐 Open in browser:"
           echo "https://${{ steps.ts.outputs.host }}"
           echo ""
-          echo "🔐 Default Login:"
+          echo "🔐 Login:"
           echo "Username: guacadmin"
           echo "Password: guacadmin"
+          echo ""
+          echo "⚠️ Change password immediately"
           echo "======================================"
 
       - name: Keep runner alive
