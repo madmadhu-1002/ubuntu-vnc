@@ -20,13 +20,13 @@ jobs:
             --hostname=github-webtop \
             --accept-dns=true
 
-      - name: Get TLS cert from Tailscale
+      - name: Request Tailscale TLS cert
         run: |
           sudo mkdir -p /etc/tailscale/certs
-          sudo tailscale cert github-webtop
-          sudo mv github-webtop.* /etc/tailscale/certs/
+          sudo tailscale cert github-webtop.tail42478b.ts.net
+          sudo mv github-webtop.tail42478b.ts.net.* /etc/tailscale/certs/
 
-      - name: Pull Webtop
+      - name: Pull Webtop image
         run: |
           docker pull lscr.io/linuxserver/webtop:ubuntu-xfce
 
@@ -41,22 +41,22 @@ jobs:
             -e TZ=Asia/Kolkata \
             -e USERNAME=webtop \
             -e PASSWORD=github \
-            -e SSL_CERT=/certs/github-webtop.crt \
-            -e SSL_KEY=/certs/github-webtop.key \
+            -e SSL_CERT=/certs/github-webtop.tail42478b.ts.net.crt \
+            -e SSL_KEY=/certs/github-webtop.tail42478b.ts.net.key \
             -v /etc/tailscale/certs:/certs:ro \
             lscr.io/linuxserver/webtop:ubuntu-xfce
 
-      - name: Show secure URL
+      - name: Show secure access info
         run: |
           echo "======================================"
-          echo "✅ Webtop with REAL HTTPS"
+          echo "✅ Webtop is running with REAL HTTPS"
           echo ""
-          echo "Open:"
-          echo "https://github-webtop.$(tailscale status --json | jq -r '.CurrentTailnet.Name'):3000"
+          echo "Open this URL (IMPORTANT):"
+          echo "https://github-webtop.tail42478b.ts.net:3000"
           echo ""
           echo "Username: webtop"
           echo "Password: github"
           echo "======================================"
 
-      - name: Keep alive
+      - name: Keep runner alive
         run: sleep 6h
