@@ -34,7 +34,7 @@ jobs:
             -e PGID=0 \
             -e TZ=Asia/Kolkata \
             -e PASSWORD=github \
-            -e WEBTOP_DISABLE_HTTPS=true \
+            -e DISABLE_HTTPS=true \
             lscr.io/linuxserver/webtop:ubuntu-xfce
 
       - name: Show login info
