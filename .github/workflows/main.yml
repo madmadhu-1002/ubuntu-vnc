@@ -1,39 +1,45 @@
-name: Ubuntu VNC Deploy
+name: Ubuntu VNC via Tailscale
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "start or stop VNC desktop"
+        required: true
+        default: "start"
 
 jobs:
-  deploy-vnc:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360   # ⬅️ FULL 6 HOURS
+  vnc:
+    runs-on: [self-hosted, linux, vps]
+    timeout-minutes: 360   # full 6 hours max
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: Deploy Ubuntu VNC container
+      - name: Show Tailscale IP
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          echo "Tailscale IP:"
+          tailscale ip -4
 
-            docker rm -f ubuntu-vnc || true
+      - name: Start Ubuntu VNC Desktop
+        if: github.event.inputs.action == 'start'
+        run: |
+          docker rm -f ubuntu-vnc || true
 
-            docker run -d \
-              --name ubuntu-vnc \
-              -p 5901:5901 \
-              -e VNC_PASSWORD=${{ secrets.VNC_PASSWORD }} \
-              tiryoh/ubuntu-vnc-desktop
+          docker run -d \
+            --name ubuntu-vnc \
+            -p 5901:5901 \
+            -e VNC_PASSWORD=${{ secrets.VNC_PASSWORD }} \
+            tiryoh/ubuntu-vnc-desktop
 
-            echo "================================="
-            echo "UBUNTU VNC DESKTOP READY"
-            echo "SERVER IP   : ${{ secrets.VPS_HOST }}"
-            echo "VNC PORT    : 5901"
-            echo "VNC PASSWORD: ${{ secrets.VNC_PASSWORD }}"
-            echo "================================="
-          EOF
+          echo "====================================="
+          echo "UBUNTU VNC DESKTOP STARTED"
+          echo "Tailscale IP : $(tailscale ip -4)"
+          echo "VNC PORT     : 5901"
+          echo "VNC PASSWORD : ${{ secrets.VNC_PASSWORD }}"
+          echo "====================================="
+
+      - name: Stop Ubuntu VNC Desktop
+        if: github.event.inputs.action == 'stop'
+        run: |
+          docker stop ubuntu-vnc || true
+          docker rm ubuntu-vnc || true
+          echo "Ubuntu VNC Desktop stopped"
