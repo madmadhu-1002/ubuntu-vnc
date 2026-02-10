@@ -1,0 +1,39 @@
+name: Ubuntu VNC Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-vnc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # ⬅️ FULL 6 HOURS
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Deploy Ubuntu VNC container
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+
+            docker rm -f ubuntu-vnc || true
+
+            docker run -d \
+              --name ubuntu-vnc \
+              -p 5901:5901 \
+              -e VNC_PASSWORD=${{ secrets.VNC_PASSWORD }} \
+              tiryoh/ubuntu-vnc-desktop
+
+            echo "================================="
+            echo "UBUNTU VNC DESKTOP READY"
+            echo "SERVER IP   : ${{ secrets.VPS_HOST }}"
+            echo "VNC PORT    : 5901"
+            echo "VNC PASSWORD: ${{ secrets.VNC_PASSWORD }}"
+            echo "================================="
+          EOF
