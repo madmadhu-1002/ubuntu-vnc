@@ -1,45 +1,57 @@
-name: Ubuntu VNC via Tailscale
+name: Ubuntu VNC with Tailscale
 
 on:
   workflow_dispatch:
-    inputs:
-      action:
-        description: "start or stop VNC desktop"
-        required: true
-        default: "start"
 
 jobs:
   vnc:
-    runs-on: [self-hosted, linux, vps]
-    timeout-minutes: 360   # full 6 hours max
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     steps:
-      - name: Show Tailscale IP
-        run: |
-          echo "Tailscale IP:"
-          tailscale ip -4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Start Ubuntu VNC Desktop
-        if: github.event.inputs.action == 'start'
+      - name: Install Tailscale
         run: |
-          docker rm -f ubuntu-vnc || true
+          curl -fsSL https://tailscale.com/install.sh | sh
 
+      - name: Start Tailscale
+        run: |
+          sudo tailscale up \
+            --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
+            --hostname=github-vnc \
+            --accept-dns=false
+
+      - name: Pull Ubuntu VNC Image
+        run: |
+          docker pull dorowu/ubuntu-desktop-lxde-vnc
+
+      - name: Run VNC Container
+        run: |
           docker run -d \
             --name ubuntu-vnc \
-            -p 5901:5901 \
-            -e VNC_PASSWORD=${{ secrets.VNC_PASSWORD }} \
-            tiryoh/ubuntu-vnc-desktop
+            --network host \
+            -e USER=root \
+            -e PASSWORD=github \
+            dorowu/ubuntu-desktop-lxde-vnc
 
-          echo "====================================="
-          echo "UBUNTU VNC DESKTOP STARTED"
-          echo "Tailscale IP : $(tailscale ip -4)"
-          echo "VNC PORT     : 5901"
-          echo "VNC PASSWORD : ${{ secrets.VNC_PASSWORD }}"
-          echo "====================================="
-
-      - name: Stop Ubuntu VNC Desktop
-        if: github.event.inputs.action == 'stop'
+      - name: Show Connection Details
         run: |
-          docker stop ubuntu-vnc || true
-          docker rm ubuntu-vnc || true
-          echo "Ubuntu VNC Desktop stopped"
+          echo "===================================="
+          echo "✅ VNC SERVER IS READY"
+          echo ""
+          echo "🔐 VNC LOGIN CREDENTIALS"
+          echo "Username: root"
+          echo "Password: github"
+          echo ""
+          echo "🌐 CONNECT VIA TAILSCALE IP"
+          tailscale ip -4
+          echo ""
+          echo "📡 VNC PORT: 5900"
+          echo "===================================="
+
+      - name: Keep Runner Alive
+        run: |
+          echo "Keeping runner alive..."
+          sleep 6h
