@@ -38,9 +38,10 @@ jobs:
       - name: Prepare Guacamole NO-AUTH config
         run: |
           mkdir -p config/extensions
-          docker run --rm guacamole/guacamole \
-            sh -c "cp /opt/guacamole/extensions/guacamole-auth-noauth*.jar /config/extensions/" \
-            -v $PWD/config:/config
+          docker run --rm \
+            -v $PWD/config:/config \
+            guacamole/guacamole \
+            sh -c "cp /opt/guacamole/extensions-available/guacamole-auth-noauth*.jar /config/extensions/"
 
       - name: Create docker-compose.yml
         run: |
