@@ -35,34 +35,19 @@ jobs:
           HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
-      - name: Prepare Guacamole NO-AUTH config
-        run: |
-          mkdir -p config/extensions
-          docker run --rm \
-            -v $PWD/config:/config \
-            guacamole/guacamole \
-            sh -c "cp /opt/guacamole/extensions-available/guacamole-auth-noauth*.jar /config/extensions/"
-
       - name: Create docker-compose.yml
         run: |
           cat <<EOF > docker-compose.yml
           version: "3.9"
 
           services:
-            guacd:
-              image: guacamole/guacd:latest
-              restart: unless-stopped
-
             guacamole:
-              image: guacamole/guacamole:latest
-              depends_on:
-                - guacd
+              image: lscr.io/linuxserver/guacamole:latest
+              container_name: guacamole
               environment:
-                GUACD_HOSTNAME: guacd
-                GUACD_PORT: 4822
-                GUACAMOLE_HOME: /config
-              volumes:
-                - ./config:/config
+                PUID: 0
+                PGID: 0
+                TZ: Asia/Kolkata
               ports:
                 - "8080:8080"
               restart: unless-stopped
@@ -74,17 +59,19 @@ jobs:
 
       - name: Enable HTTPS with Tailscale Serve
         run: |
-          sudo tailscale serve -bg http://localhost:8080/guacamole
+          sudo tailscale serve -bg http://localhost:8080
 
       - name: Show HTTPS URL
         run: |
           echo "======================================"
-          echo "✅ Apache Guacamole is running with REAL HTTPS"
+          echo "✅ Guacamole is running with REAL HTTPS"
           echo ""
           echo "🌐 Open in browser:"
           echo "https://${{ steps.ts.outputs.host }}"
           echo ""
-          echo "🔓 Authentication: DISABLED (NO-AUTH MODE)"
+          echo "🔐 Default Login:"
+          echo "Username: guacadmin"
+          echo "Password: guacadmin"
           echo "======================================"
 
       - name: Keep runner alive
