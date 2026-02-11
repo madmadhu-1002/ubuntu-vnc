@@ -37,11 +37,10 @@ jobs:
             ubuntu-rdp:
               image: accetto/ubuntu-vnc-xfce
               container_name: ubuntu-rdp
+              network_mode: host
               environment:
                 TZ: Asia/Kolkata
                 VNC_PASSWORD: password
-              ports:
-                - "3389:3389"
               shm_size: "1gb"
               restart: unless-stopped
           EOF
