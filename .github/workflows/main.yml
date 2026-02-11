@@ -1,10 +1,10 @@
-name: Guacamole with HTTPS via Tailscale Serve
+name: Ubuntu XFCE RDP via Tailscale
 
 on:
   workflow_dispatch:
 
 jobs:
-  guacamole:
+  ubuntu-rdp:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -12,12 +12,6 @@ jobs:
       - name: Verify Docker
         run: |
           docker --version
-          docker compose version
-
-      - name: Install jq
-        run: |
-          sudo apt update
-          sudo apt install -y jq
 
       - name: Install Tailscale
         run: |
@@ -29,45 +23,51 @@ jobs:
             --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
             --accept-dns=true
 
-      - name: Detect Tailscale hostname
-        id: ts
+      - name: Get Tailscale IP
+        id: tsip
         run: |
-          HOST=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
-          echo "host=$HOST" >> $GITHUB_OUTPUT
+          IP=$(tailscale ip -4)
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "Tailscale IP: $IP"
 
       - name: Create docker-compose.yml
         run: |
           cat <<EOF > docker-compose.yml
           services:
-            guacamole:
-              image: oznu/guacamole:latest
-              container_name: guacamole
-              ports:
-                - "8080:8080"
+            ubuntu-rdp:
+              image: accetto/ubuntu-vnc-xfce
+              container_name: ubuntu-rdp
               environment:
-                EXTENSIONS: auth
+                TZ: Asia/Kolkata
+                VNC_PASSWORD: password
+              ports:
+                - "3389:3389"
+              shm_size: "1gb"
               restart: unless-stopped
           EOF
 
-      - name: Start Guacamole
+      - name: Start Ubuntu XFCE container
         run: |
           docker compose up -d
 
-      - name: Enable HTTPS with Tailscale Serve
-        run: |
-          sudo tailscale serve -bg http://localhost:8080
-
-      - name: Show HTTPS URL
+      - name: Show RDP Login Details
         run: |
           echo "======================================"
-          echo "✅ Guacamole is running with REAL HTTPS"
+          echo "✅ Ubuntu XFCE Desktop is running"
           echo ""
-          echo "🌐 Open in browser:"
-          echo "https://${{ steps.ts.outputs.host }}"
+          echo "🖥 Connect using Windows Remote Desktop"
           echo ""
-          echo "🔐 Login:"
-          echo "Username: guacadmin"
-          echo "Password: guacadmin"
+          echo "IP Address:"
+          echo "${{ steps.tsip.outputs.ip }}"
+          echo ""
+          echo "Port: 3389"
+          echo ""
+          echo "Login:"
+          echo "Username: headless"
+          echo "Password: password"
+          echo ""
+          echo "Command:"
+          echo "mstsc -> ${{ steps.tsip.outputs.ip }}:3389"
           echo "======================================"
 
       - name: Keep runner alive
