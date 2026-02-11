@@ -50,7 +50,7 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "Tailscale IP: $IP"
 
-      # Start Ollama container (bridge networking - stable)
+      # Start Ollama container (DO NOT override command)
       - name: Start Ollama Container
         run: |
           docker run -d \
@@ -59,23 +59,22 @@ jobs:
             -e OLLAMA_NUM_PARALLEL=2 \
             -e OLLAMA_KEEP_ALIVE=10m \
             --restart unless-stopped \
-            ollama/ollama:latest \
-            ollama serve
+            ollama/ollama:latest
 
       # Wait for Ollama API to be ready
       - name: Wait for Ollama
         run: |
-          echo "Waiting for Ollama server..."
+          echo "Waiting for Ollama..."
           for i in {1..30}; do
-            if curl -s http://localhost:11434 > /dev/null; then
+            if curl -s http://localhost:11434/api/tags > /dev/null; then
               echo "Ollama is ready!"
               break
             fi
             sleep 2
           done
 
-      # Confirm container is running
-      - name: Check Container Status
+      # Show container logs (debug safety)
+      - name: Show Container Status
         run: |
           docker ps
           docker logs ollama || true
