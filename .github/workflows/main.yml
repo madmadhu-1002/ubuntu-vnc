@@ -1,4 +1,4 @@
-name: Ollama WizardLM via Tailscale
+name: Ollama DeepSeek via Tailscale
 
 on:
   workflow_dispatch:
@@ -9,34 +9,21 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      # Show system information
+      # Show system info
       - name: Show System Info
         run: |
           echo "=============================="
           echo "🖥 SYSTEM INFORMATION"
           echo "=============================="
-
           echo ""
-          echo "📌 CPU:"
+          echo "CPU:"
           lscpu | grep "Model name"
-
           echo ""
-          echo "📌 RAM:"
+          echo "RAM:"
           free -h
-
           echo ""
-          echo "📌 Disk (ROM):"
+          echo "Disk:"
           df -h
-
-          echo ""
-          echo "📌 Total Memory in MB:"
-          grep MemTotal /proc/meminfo
-
-          echo ""
-          echo "📌 Storage Devices:"
-          lsblk
-
-          echo ""
           echo "=============================="
 
       # Verify Docker
@@ -63,41 +50,41 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "Tailscale IP: $IP"
 
-      # Start Ollama container
-      - name: Start Ollama Docker
+      # Start Ollama container (Docker Hub image)
+      - name: Start Ollama
         run: |
           docker run -d \
             --name ollama \
             --network host \
-            -e OLLAMA_NUM_PARALLEL=1 \
-            -e OLLAMA_KEEP_ALIVE=5m \
-            ghcr.io/ollama/ollama:latest
+            -e OLLAMA_NUM_PARALLEL=2 \
+            -e OLLAMA_KEEP_ALIVE=10m \
+            ollama/ollama:latest
 
-      # Pull WizardLM model
-      - name: Pull WizardLM-13b-code
+      # Pull DeepSeek Coder model
+      - name: Pull deepseek-coder:6.7b
         run: |
-          docker exec ollama ollama pull wizardlm-13b-code
+          docker exec ollama ollama pull deepseek-coder:6.7b
 
-      # Start Ollama API server
+      # Start Ollama API
       - name: Start Ollama API
         run: |
           docker exec -d ollama ollama serve
 
-      # Show API details
+      # Show API Info
       - name: Show API Info
         run: |
           echo "======================================"
-          echo "✅ Ollama is running with WizardLM-13b-code"
+          echo "✅ Ollama running with DeepSeek-Coder 6.7B"
           echo ""
           echo "🌐 API Endpoint:"
           echo "http://${{ steps.tsip.outputs.ip }}:11434"
           echo ""
-          echo "🧠 Model: wizardlm-13b-code"
+          echo "🧠 Model: deepseek-coder:6.7b"
           echo ""
           echo "Test with:"
           echo "curl http://${{ steps.tsip.outputs.ip }}:11434/api/generate -d '{"
-          echo '  "model": "wizardlm-13b-code",'
-          echo '  "prompt": "Write a Python function to reverse a string."'
+          echo '  "model": "deepseek-coder:6.7b",'
+          echo '  "prompt": "Write a Python function to validate JWT tokens."'
           echo "}'"
           echo "======================================"
 
