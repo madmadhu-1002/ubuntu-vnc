@@ -50,28 +50,35 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "Tailscale IP: $IP"
 
-      # Start Ollama with server immediately
+      # Start Ollama container (bridge networking - stable)
       - name: Start Ollama Container
         run: |
           docker run -d \
             --name ollama \
-            --network host \
+            -p 11434:11434 \
             -e OLLAMA_NUM_PARALLEL=2 \
             -e OLLAMA_KEEP_ALIVE=10m \
+            --restart unless-stopped \
             ollama/ollama:latest \
             ollama serve
 
-      # Wait for Ollama to be ready
+      # Wait for Ollama API to be ready
       - name: Wait for Ollama
         run: |
           echo "Waiting for Ollama server..."
-          for i in {1..20}; do
+          for i in {1..30}; do
             if curl -s http://localhost:11434 > /dev/null; then
               echo "Ollama is ready!"
               break
             fi
             sleep 2
           done
+
+      # Confirm container is running
+      - name: Check Container Status
+        run: |
+          docker ps
+          docker logs ollama || true
 
       # Pull DeepSeek model
       - name: Pull deepseek-coder:6.7b
